@@ -29,6 +29,10 @@ FuncParam = namedtuple(
 )
 
 
+def ignore_nothing(name: str, arg: inspect.Parameter) -> bool:
+    return False
+
+
 class ViewSignature:
     FLATTEN_PATH_SEP = (
         "\x1e"  # ASCII Record Separator.  IE: not generally used in query names
@@ -37,6 +41,7 @@ class ViewSignature:
 
     def __init__(self, path: str, view_func: Callable) -> None:
         self.view_func = view_func
+        self.ignorable = getattr(view_func, "ignorable", ignore_nothing)
         self.signature = get_typed_signature(self.view_func)
         self.path = path
         self.path_params_names = get_path_param_names(path)
@@ -49,6 +54,9 @@ class ViewSignature:
                 # TODO: maybe better assert that 1st param is request or check by type?
                 # maybe even have attribute like `has_request`
                 # so that users can ignore passing request if not needed
+                continue
+
+            if self.ignorable(name, arg):
                 continue
 
             if arg.kind == arg.VAR_KEYWORD:
